@@ -1,0 +1,44 @@
+sudo systemctl disable --now netctl
+sudo systemctl disable --now NetworkManager
+sudo systemctl enable --now systemd-networkd
+
+# /etc/systemd/network/20-wireless.network
+[Match]
+Name=enp1s0
+
+[Network]
+Address=192.168.1.10/24
+Gateway=192.168.1.1
+DNS=1.1.1.1
+DNS=8.8.8.8
+
+
+sudo systemctl restart systemd-networkd
+
+-----
+
+sudo wpa_passphrase "Your_SSID" "Your_Password" | sudo tee /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+sudo systemctl enable --now wpa_supplicant@wlan0.service
+
+-----
+
+# /etc/systemd/system/wifi-powersave-off@.service
+[Unit]
+Description=Disable Wi-Fi Power Save for %I
+Requires=sys-subsystem-net-devices-%i.device
+After=sys-subsystem-net-devices-%i.device
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/iw dev %i set power_save off
+
+[Install]
+WantedBy=multi-user.target
+
+
+---
+
+sudo systemctl enable wifi-powersave-off@wlan0.service
+sudo systemctl start wifi-powersave-off@wlan0.service
+
+iw dev wlan0 get power_save

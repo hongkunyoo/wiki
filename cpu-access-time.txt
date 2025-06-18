@@ -7,4 +7,4 @@
 - Main Memory: 100 ns
 - SSD: 150 us
 
-latency: https://coffeewhale.com/wiki/latency.png
+latency: https://coffeewhale.com/wiki/cpu-access-time.png
