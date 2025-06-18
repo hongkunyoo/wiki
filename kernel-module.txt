@@ -1,0 +1,70 @@
+1. Simple Kernel module 제작해 본다. ✅
+2. GPIO API를 이용하여 kernel module 제작해 본다. ✅
+3. GPIO register를 읽어서 register 레벨에서 GPIO를 컨트롤 해본다. --> 그냥 MMIO를 이용하여 userland에서 memory 접근하여 GPIO 컨트롤
+
+
+[Kernel Module in Raspberry PI]
+sudo apt install raspberrypi-kernel-headers
+
+sudo apt install linux-headers-rpi-{v6,v7,v7l}
+sudo apt install linux-headers-rpi-v7
+
+
+static ssize_t gdev_read(struct file *filep, char __user *buff, size_t count, loff_t *offp)
+{
+    // need to prepare my_buffer, buffer_len
+    return simple_read_from_buffer(buff, count, offp, my_buffer, buffer_len);
+}
+
+
+ssize_t simple_read_from_buffer(void __user *to, size_t count, loff_t *ppos,
+        const void *from, size_t available)
+{
+  loff_t pos = *ppos;
+  size_t ret; 
+
+  if (pos < 0) 
+    return -EINVAL;
+  if (pos >= available || !count)
+    return 0;
+  if (count > available - pos) 
+    count = available - pos; 
+  ret = copy_to_user(to, from + pos, count);
+  if (ret == count)
+    return -EFAULT;
+  count -= ret; 
+  *ppos = pos + count;
+  return count;
+}
+
+
+
+==========Sleepy IO==============
+
+DECLARE_WAIT_QUEUE_HEAD(wq);
+
+ssize_t sleepy_read (struct file *filp, char *buf, size_t count, 
+   loff_t *pos)
+{
+  printk(KERN_DEBUG "process %i (%s) going to sleep\n",
+      current->pid, current->comm);
+  interruptible_sleep_on(&wq);
+  printk(KERN_DEBUG "awoken %i (%s)\n", current->pid, current->comm);
+  return 0; /* EOF */
+}
+
+ssize_t sleepy_write (struct file *filp, const char *buf, size_t count,
+		loff_t *pos)
+{
+  printk(KERN_DEBUG "process %i (%s) awakening the readers...\n",
+     current->pid, current->comm);
+  wake_up_interruptible(&wq);
+  return count; /* succeed, to avoid retrial */
+}
+
+
+
+vim drivers/pinctrl/bcm/pinctrl-bcm2835.c  
+vim arch/arm/include/asm/io.h
+vim drivers/gpio/gpiolib.c --> gpiochip_get_data
+

@@ -1,0 +1,37 @@
+
+# Target (server)
+!First rebuild rpi kernel with CONFIG_TARGET_CORE=m
+
+sudo apt -y install targetcli-fb
+sudo targetcli  
+
+backstores/fileio/ create fileio1 /opt/fileio1.img 5G
+
+# target
+/iscsi create iqn.2023-12.local.server-iscsi:server
+# Created default portal listening on all IPs (0.0.0.0), port 3260. 
+
+# ACL
+/iscsi/iqn.2023-12.local.server-iscsi:server/tpg1/acls create iqn.2023-12.local.client-iscsi:client1
+
+#LUN 
+/iscsi/iqn.2023-12.local.server-iscsi:server/tpg1/luns create /backstores/fileio/fileio1
+
+--------------------------------
+
+# initator (client)
+sudo apt install -y open-iscsi lsscsi
+sudo iscsiadm -m discovery  --type sendtargets --portal 10.0.5.15
+sudo iscsiadm -m node -o show
+
+sudo systemctl restart iscsid.service
+sudo iscsiadm -m node --login
+sudo lsscsi
+
+
+sudo mkdir /file1
+sudo mkfs -t ext4 /dev/sda
+sudo mount /dev/sda -o _netdev /file1/
+
+sudo chmod g+rwxs /file1
+

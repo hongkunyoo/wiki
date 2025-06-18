@@ -1,0 +1,55 @@
+####################################################
+# gobgp + zebra
+####################################################
+
+gobgpd.yml
+#-------------------------------
+global:
+    config:
+        as: 64513
+        router-id: 10.0.0.1
+neighbors:
+    - config:
+        neighbor-address: 10.0.0.2
+        peer-as: 64514
+    - config:
+        neighbor-address: 10.0.0.3
+        peer-as: 64515
+zebra:
+    config:
+        enabled: true
+        url: "unix:/var/run/quagga/zserv.api"
+        redistribute-route-type-list:  ["connect"]
+        version: 2
+#-------------------------------
+
+sudo apt install -y quagga
+https://www.psychz.net/client/kb/en/quagga-routing--install-configure-and-setup-bgp.html
+https://github.com/rwestphal/quagga-public/blob/master/zebra/zebra.conf.sample
+
+/etc/quagga/zebra.conf
+! -*- zebra -*-
+!
+! zebra sample configuration file
+!
+! $Id: zebra.conf.sample,v 1.1 2002/12/13 20:15:30 paul Exp $
+!
+hostname r01
+password zebra
+enable password zebra
+!
+! Interface's description. 
+!
+!interface lo
+! description test of desc.
+!
+!interface sit0
+! multicast
+
+!
+! Static default route sample.
+!
+!ip route 0.0.0.0/0 203.181.89.241
+!
+
+!log file zebra.log

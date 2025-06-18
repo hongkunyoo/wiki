@@ -1,0 +1,182 @@
+[참고자료]
+https://github.com/containernetworking/cni/blob/main/SPEC.md#example-configuration
+https://www.youtube.com/watch?v=6v_BDHIgOY8&t=24s&ab_channel=CNCF%5BCloudNativeComputingFoundation%5D
+https://github.com/kristenjacobs/container-networking/blob/master/1-network-namespace/setup.sh
+https://www.cni.dev/plugins/current/ipam/host-local/
+https://www.youtube.com/watch?v=4E_l-B988Ek&ab_channel=Tigera
+https://www.cni.dev/docs/cnitool/#example-invocation (이건 잘 사용 안했음. 직접 cni binary 호출하여 테스트함)
+https://github.com/containernetworking/cni
+https://www.youtube.com/watch?v=WDoVl--hzt0&ab_channel=GeoffreyMessier
+https://learnk8s.io/kubernetes-network-packets
+https://medium.com/@jain.sm/flannel-vs-calico-a-battle-of-l2-vs-l3-based-networking-5a30cd0a3ebd
+
+-----------------------------------
+[ec2 spec]
+- t2.xlarge
+- disable check src/dst
+- gp3 15Gi
+
+-----------------------------------
+[subnet]
+
+private a: 10.0.0.0/24
+  - n01 (10.0.0.245	)
+  - n02 (10.0.0.190)
+private c: 10.0.3.0/24
+  - n03 (10.0.3.51)
+  - n04 (10.0.3.88)
+public  a: 10.0.2.0/24
+  - bastion (10.0.2.239)
+
+-----------------------------------
+[/etc/cni/net.d/10-mycni.conflist]
+
+{
+   "cniVersion":"0.3.1",
+   "name":"mycni",
+   "plugins":[
+      {
+         "type":"bridge",
+         "bridge":"mycni",
+         "isGateway": true,
+         "ipMasq":false,
+         "hairpinMode":false,
+         "ipam":{
+            "type":"host-local",
+            "subnet":"192.168.1.0/24",
+            "routes":[
+               {
+                  "dst":"0.0.0.0/0"
+               }
+            ],
+            "resolvConf":"/etc/resolv.conf"
+         }
+      },
+      {
+         "type":"portmap",
+         "capabilities":{
+            "portMappings":true
+         }
+      }
+   ]
+}
+-----------------------------------
+[설치 스크립트]
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sudo sysctl --system
+
+sudo apt update && sudo apt install -y docker.io
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+sudo curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo apt-get update
+sudo apt-get install -y kubelet=1.20.1-00 kubeadm=1.20.1-00 kubectl=1.20.1-00
+
+
+sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --node-name=ip-10-0-0-245.ap-northeast-2.compute.internal --apiserver-cert-extra-sans localhost,127.0.0.1,10.0.0.245 
+sudo kubeadm join 10.0.0.245:6443 --token 8tca1j.xx --discovery-token-ca-cert-hash sha256:xx
+
+-----------------------------------
+[route 설정]
+
+# for internet connection
+sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+sudo ip route add 192.168.1.0/24 via 10.0.0.245 dev eth0
+sudo ip route add 192.168.2.0/24 via 10.0.0.190 dev eth0
+sudo ip route add 192.168.3.0/24 via 10.0.3.51 dev eth0
+sudo ip route add 192.168.4.0/24 via 10.0.3.88 dev eth0
+
+sudo ip route add 10.0.0.245 dev eth0
+sudo ip route add 10.0.0.190 dev eth0
+sudo ip route add 10.0.3.51 dev eth0
+sudo ip route add 10.0.3.88 dev eth0
+
+sudo ip route del 10.0.0.245 dev eth0
+sudo ip route del 10.0.0.190 dev eth0
+sudo ip route del 10.0.3.51 dev eth0
+sudo ip route del 10.0.3.88 dev eth0
+
+-----------------------------------
+[결과]
+
+n01     <--> n02끼리 통신됨
+n03     <--> n04끼리 통신됨
+n01,n02 <--> n03,n04끼리 통신 안됨 (다른 subnet이라서 flat network 불가)
+
+
+-----------------------------------
+[cni 자체 스크립트]
+
+#!/usr/bin/python3
+import os, sys, io, json
+import fileinput
+import pprint
+
+sb = io.StringIO()
+
+def remove(d, k):
+    if k in d:
+        del d[k]
+
+cni_command = os.environ.get("CNI_COMMAND", "NONE")
+
+print("=============[%s]===========" % cni_command, file=sb)
+print(sys.argv, file=sb)
+
+config = json.loads(sys.stdin.read())
+
+pprint.pprint(config, sb)
+
+d = os.environ
+
+remove(d, "HOSTNAME")
+remove(d, "TERM")
+remove(d, "HISTSIZE")
+remove(d, "QTDIR")
+remove(d, "LS_COLORS")
+remove(d, "MAIL")
+remove(d, "INPUTRC")
+remove(d, "LANG")
+remove(d, "LOGNAME")
+remove(d, "USER")
+remove(d, "USERNAME")
+remove(d, "HOME")
+remove(d, "SHELL")
+remove(d, "PATH")
+remove(d, "SUDO_COMMAND")
+remove(d, "SUDO_USER")
+remove(d, "SUDO_UID")
+remove(d, "SUDO_GID")
+remove(d, "XDG_SESSION_ID")
+
+for k,v in d.items():
+   print("%s=%s" % (k,v), file=sb)
+print("-----------------", file=sb)
+print("\n\n\n", file=sb)
+
+
+with open("/opt/cni/bin/output.txt", "at") as f:
+    f.write(sb.getvalue())
+#print(json.dump(config['prevResult']))
+if 'prevResult' in config:
+    ret = config['prevResult']
+else:
+    ret = config
+json.dump(ret, sys.stdout)

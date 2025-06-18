@@ -1,0 +1,183 @@
+https://www.youtube.com/watch?v=WDoVl--hzt0&ab_channel=GeoffreyMessier  # 이거 라우팅 룰 설명하는 유투브 중요.
+
+[참고]
+sudo iptables -nat -A POSTROUTING -o wlan0 -j MASQUERADE
+sudo iptables -A FORWARD -i wlan0 -o eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -A FORWARD -i eth0 -o wlan0 -j ACCEPT
+
+# docker network ls
+
+sudo ln -Ts /var/run/docker/netns /var/run/netns
+
+# to get docker network ns
+docker inspect c11 | grep SandboxID
+
+
+
+####################
+# Kubernetes setup
+####################
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --flannel-backend none --disable traefik --disable metrics-server --prefer-bundled-bin" K3S_TOKEN=12345 sh -s -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent" K3S_TOKEN="12345" sh -s - --server https://10.0.2.11:6443
+
+# For All Nodes to use legcy iptables
+sudo iptables -F
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+sudo reboot
+
+https://www.youtube.com/watch?v=6v_BDHIgOY8&t=24s&ab_channel=CNCF%5BCloudNativeComputingFoundation%5D
+
+--------------[각 노드 호스트 네트워크 설정]--------------
+
+# static IP
+sudo vi /etc/dhcpcd.conf
+# interface eth0
+# static ip_address=10.0.1.1/24
+# static routers=xxx
+
+--------------[router 설정]--------------
+
+# install nftables
+sudo apt install nftables
+
+# IP forward
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# Permanent write
+# vim /etc/sysctl.conf
+# net.ipv4.ip_forward=1
+
+# NAT masquerade
+sudo nft add table nat
+sudo nft 'add chain nat postrouting { type nat hook postrouting priority 100 ;}'
+sudo nft add rule nat postrouting ip saddr 10.0.1.0/24 oif wlan0 masquerade
+sudo nft add rule nat postrouting ip saddr 10.0.2.0/24 oif wlan0 masquerade
+
+# Configure permanently
+sudo nft list ruleset > /etc/nftables.conf
+sudo systemctl enable nftables
+sudo systemctl start nftables
+
+# Route rule for Pod CIDR
+sudo ip route add 172.16.1.0/24 via 10.0.1.11 dev eth0
+sudo ip route add 172.16.2.0/24 via 10.0.1.12 dev eth0
+sudo ip route add 172.16.3.0/24 via 10.0.2.11 dev eth1
+sudo ip route add 172.16.4.0/24 via 10.0.2.12 dev eth1
+
+
+===============[각 노드 컨테이너 네트워크 설정]===============
+
+#!/bin/bash -e 
+
+CON1="con1"
+CON2="con2"
+# NODE_IP="10.0.1.11"
+BRIDGE_IP="172.16.1.1"
+IP1="172.16.1.11"
+IP2="172.16.1.12"
+
+echo "Creating the namespaces"
+sudo ip netns add $CON1
+sudo ip netns add $CON2
+
+echo "Creating the veth pairs"
+sudo ip link add veth11 type veth peer name eth11
+sudo ip link add veth12 type veth peer name eth12
+
+echo "Adding the veth pairs to the namespaces"
+sudo ip link set eth11 netns $CON1
+sudo ip link set eth12 netns $CON2
+
+echo "Configuring the interfaces in the network namespaces with IP address"
+sudo ip netns exec $CON1 ip addr add $IP1/24 dev eth11
+sudo ip netns exec $CON2 ip addr add $IP2/24 dev eth12
+
+echo "Enabling the interfaces inside the network namespaces"
+sudo ip netns exec $CON1 ip link set dev eth11 up
+sudo ip netns exec $CON2 ip link set dev eth12 up
+
+echo "Creating the bridge"
+sudo ip link add name br0 type bridge
+
+echo "Adding the network namespaces interfaces to the bridge"
+sudo ip link set dev veth11 master br0
+sudo ip link set dev veth12 master br0
+
+echo "Assigning the IP address to the bridge"
+sudo ip addr add $BRIDGE_IP/24 dev br0
+
+echo "Enabling the bridge"
+sudo ip link set dev br0 up
+
+echo "Enabling the interfaces connected to the bridge"
+sudo ip link set dev veth11 up
+sudo ip link set dev veth12 up
+
+echo "Setting the loopback interfaces in the network namespaces"
+sudo ip netns exec $CON1 ip link set lo up
+sudo ip netns exec $CON2 ip link set lo up
+
+echo "Setting the default route in the network namespaces"
+sudo ip netns exec $CON1 ip route add default via $BRIDGE_IP dev eth11
+sudo ip netns exec $CON2 ip route add default via $BRIDGE_IP dev eth12
+
+echo "Enable container masquerade"
+sudo nft add table nat
+sudo nft 'add chain nat postrouting { type nat hook postrouting priority 100 ;}'
+sudo nft add rule nat postrouting ip saddr 172.16.1.0/24 oif eth0 masquerade
+
+echo "Setting the route on the node to reach the network namespaces on the other node"
+sudo ip route add 172.16.2.0/24 via 10.0.1.12 dev eth0
+
+echo "Enables IP forwarding on the node"
+sudo sysctl -w net.ipv4.ip_forward=1
+
+
+============================================================
+
+1. flannel 설치
+2. CNI plugins 설치 (https://github.com/containernetworking/plugins)
+3. host-gw 변경 --> router 설정
+
+============================================================
+
+## 자체 CNI 테스트
+
+{  
+  "name": "mycbr0",
+  "cniVersion": "0.3.1",
+  "plugins": [
+   {
+      "type": "mybridge",
+      "bridge": "mycni0",
+      "ipMasq": true,
+      "isGateway": true,
+      "isDefaultGateway": true,
+      "ipam": { 
+        "type": "host-local",
+        "subnet": "10.42.0.0/24",   # <-- Pod CIDR for m01
+        "gateway": "10.42.0.1"      # <-- bridge IP
+      },
+      "dns": {
+        "nameservers": [ "8.8.8.8" ]
+      }
+    },
+    {
+      "type": "portmap",
+      "capabilities": {
+        "portMappings": true
+      }
+    }
+  ]
+} 
+
+
+
+---
+
+# mybridge
+#!/bin/bash
+/opt/cni/bin/bridge < /dev/stdin 2>&1 | tee -a /home/pi/plzwork
+
+

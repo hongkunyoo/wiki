@@ -1,0 +1,43 @@
+
+ECMP (Equal-Cost Multi-Path) default route in Linux. 
+
+sudo ip route add 172.16.0.0/16 \
+    nexthop via 172.32.1.2 dev eth0 weight 1 \
+    nexthop via 172.32.1.3 dev eth0 weight 1
+
+sudo ip route add 172.16.0.0/16 \
+    nexthop via 10.0.1.2 dev eth1.2 weight 1 \
+    nexthop via 10.0.2.2 dev eth1.3 weight 1
+
+sudo ip route add 172.16.0.0/16 \
+    nexthop via 10.0.3.2 dev eth1.4 weight 1 \
+    nexthop via 10.0.4.2 dev eth1.5 weight 1
+
+
+sudo nft list ruleset > /etc/nftables.conf
+sudo nft list ruleset
+sudo nft -a list ruleset
+
+sudo nft delete rule nat postrouting handle 3
+
+sudo nft add rule nat postrouting ip saddr 172.16.0.0/16 oif wlan0 masquerade
+sudo nft add rule nat postrouting ip saddr 172.32.1.0/24 oif wlan0 masquerade
+
+
+
+sudo ip route add default \
+    nexthop via 10.0.1.1 dev eth0.2 weight 1 \
+    nexthop via 10.0.3.1 dev eth0.4 weight 1
+
+sudo ip route add default \
+    nexthop via 10.0.2.1 dev eth0.3 weight 1 \
+    nexthop via 10.0.4.1 dev eth0.5 weight 1
+
+
+
+ip route add default via 10.0.1.1 dev eth0.2
+sysctl net.ipv4.ip_forward
+default via 10.0.1.1 dev eth0.2
+
+
+https://coffeewhale.com/wiki/Linux-IP-Routing-Basics.png

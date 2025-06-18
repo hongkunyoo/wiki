@@ -1,0 +1,18 @@
+```Makefile
+obj-m := hid-logitech-hidpp.o
+KDIR := /lib/modules/$(shell uname -r)/build
+PWD := $(shell pwd)
+
+all:
+        make -C $(KDIR) M=$(PWD) modules
+
+clean:
+        make -C $(KDIR) M=$(PWD) clean
+```
+
+# source code: logitech USB keyboard & mouse
+lib/modules/6.6.37-v8-16k+/build/drivers/hid/hid-logitech-hidpp.c
+
+
+# build
+make -C /lib/modules/6.6.37-v8-16k+/build M=$(pwd) EXTRA_CFLAGS="-I/lib/modules/6.6.37-v8-16k+/build/drivers/hid" modules  

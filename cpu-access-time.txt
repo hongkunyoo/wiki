@@ -1,0 +1,10 @@
+# Cost time
+
+- Register access:  1ns
+- L1 Cache: 2ns
+- L2 Cache: 7ns
+- L3 Cache: 15ns
+- Main Memory: 100 ns
+- SSD: 150 us
+
+latency: https://coffeewhale.com/wiki/latency.png
