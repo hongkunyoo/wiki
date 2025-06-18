@@ -35,6 +35,6 @@ for f in sorted(os.listdir()):
         continue
     arr.append(f"<li><a target='_blank' href='{f}'>{f}</li>")
 
-    output = HTML.format("\n".join(arr))
+    output = HTML.format("\n      ".join(arr))
     with open("index.html", "w") as f:
         print(output, file=f)
