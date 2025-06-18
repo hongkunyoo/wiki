@@ -1,0 +1,91 @@
+>> https://www.linuxfromscratch.org/
+
+# given that I have a loop device in /dev/loop11
+losetup -P /dev/loop11 boot
+
+# kernel image .config는 lfs 그대로 따라함
+
+# i386-pc: Arch: x86 / Firmware: BIOS /Legacy BIOS systems (most common legacy target)
+grub-install --target=i386-pc --no-floppy /dev/loop11
+
+------------------------------------------------------
+# /boot/grub/grub.cfg
+set default=0
+set timeout=0
+
+insmod part_gpt
+insmod ext2
+set root=(hd0,msdos1)
+set gfxpayload=1024x768x32
+
+menuentry "hello" {
+		# UUID로 찾는 것은 실패함. 이걸하려면 initramfs로 해야 하는데 initramfs에서 /dev/disk/by-uuid를 지원하지 않았음. udev가 필요하다고 함.
+        #search --no-floppy --fs-uuid --set=root 9161196a-5085-425f-b120-040bf630cf10
+        #linux  /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=UUID=9161196a-xxx ro console=ttyS0,115200 earlyprintk=ttyS0 loglevel=8
+
+        # terminal에 연결해여 qemu를 실행하려면 console=xx 뒤부터 끝까지 설정이 필요함. 보통은 quiet slash 많이 하는듯
+        linux  /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=/dev/vda1 ro console=ttyS0,115200 earlyprintk=ttyS0 loglevel=8
+
+        # lfs를 통해서 빌드한 리눅스 시스템은 initramfs가 없어도 잘 돌아가긴 함. 해당 initramfs는 busybox를 통해서 생성함.
+        initrd /boot/initramfs.cpio.gz
+}
+------------------------------------------------------
+
+############################################################################
+# grub까지 설정하면 driver만 virtio로 전달해주면 알아서 됨. (with grub-install)
+############################################################################
+qemu-system-x86_64  -drive   file=boot,if=virtio,format=raw  -nographic 
+
+############################################################################
+# initramfs를 위한 busybox 설정 방법
+############################################################################
+mkdir initramfs
+# git mirro or download from https://www.busybox.net/downloads/
+git clone https://github.com/mirror/busybox.git 
+cd busybox
+make menuconfig
+	[*] build static binary
+	[ ] tc
+make CONFIG_PREFIX=../initramfs install
+
+cd ../initramfs
+find . -print0 | cpio --null -ov --format=newc | gzip > initramfs.cpio.gz
+
+############################################################################
+# 번외: UUID를 통해 디스크를 찾기 위한 initramfs의 init script
+############################################################################
+# 현재 작동은 하지않음. 특히 $ROOT_DEV에 빈 값이 들어감. 정상적이라면 /dev/vda1이 들어가야 함.
+
+# /init
+#!/bin/sh
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mdev -s
+
+UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+ROOT_DEV=$(blkid -U "$UUID")
+mount "$ROOT_DEV" /mnt
+exec switch_root /mnt /sbin/init
+
+
+############################################################################
+# grub을 통하지 않고 qemu에서 직접 실행하는 방법 (without grub-install)
+############################################################################
+qemu-system-x86_64  \
+    -kernel  vmlinuz-6.13.4-lfs-12.3-systemd  \   # host 시스템 fs에 존재
+    -initrd  initramfs.cpio.gz    \               # host 시스템 fs에 존재
+    -append  "root=/dev/vda1 rw console=ttyS0 quiet earlyprintk=ttyS0 loglevel=8" /
+    -drive   file=boot,if=virtio,format=raw  \
+    -nographic
+
+
+# CD rom 사용하는 방법
+# in linux source code
+FDARGS="initrd=/init.cpio" FDINITRD=/PATH/TO/init.cpio
+qemu-system-x86_64 -cdrom ../Downloads/ubuntu-24.04.2-live-server-amd64.iso 
+
+# dd if=boot of=boot2 --> 이걸로 boot 에러나면, file system check 실행
+sudo e2fsck -f /dev/loop13p1
+
+# dd로 usb stick에 복사할 때도 테스트해 봐야할듯
