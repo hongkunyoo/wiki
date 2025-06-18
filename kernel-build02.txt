@@ -1,0 +1,106 @@
+
+qemu-system-x86_64 -cdrom ../Downloads/ubuntu-24.04.2-live-server-amd64.iso 
+
+-kernel
+-initrd
+
+https://www.youtube.com/watch?v=fDaSSArmRjk&ab_channel=MapleCircuit
+
+
+apt-get install -y flex bison libncurses-dev libelf-dev bc bzip2 syslinux isolinux genisoimage
+
+make tinyconfig
+make menuconfig
+
+- 64bit kernel
+- General setup
+	- initial ram filesystem
+	- configure standard kernel features
+		- enable printk
+- executable fileformat
+	- support ELF
+	- support shebang
+- Device Drviers
+	- Generic Driver options
+		- Maintain devtmpfs
+			- automount
+	- Character device
+		- enable tty
+		- serial drivers
+			- 8250/16550 support
+			- console on # / #
+- file system
+	- pseudo filesystems
+		- /proc
+		- /sysfs
+
+make -j8
+
+git clone busybox
+make menuconfig
+	[*] build static binary
+	[ ] tc
+make CONFIG_PREFIX=../initramfs install
+
+find . -print0 | cpio --null -ov --format=newc | gzip > initramfs.cpio.gz
+
+# decompress cpio
+# cpio -idv < initframfs.cpio
+
+qemu-system-x86_64 -kernel bzImage -initrd initframfs.cpio.gz
+
+
+make isoimage FDARGS="initrd=/initframfs.cpio.gz" FDINITRD=~/initframfs.cpio.gz
+qemu-system-x86_64 -cdrom arch/x86/boot/image.iso
+
+########################
+# using syslinux
+########################
+dd if=/dev/zero of=boot bs=1M count=50
+sudo apt install dosfstools
+mkfs -t fat boot
+syslinux boot
+mkdir m
+mount boot m
+cp bzImage initframfs.copio.gz m
+umount m
+
+
+########################
+# using grub
+########################
+dd if=/dev/zero of=boot bs=1G count=20
+fdisk boot
+- n   # create new partition
+- p   # primary (default)
+- 1   # sector  (default)
+- 2048 (1MiB) # size (default)
+- a   # make bootable
+- w   # write to disk
+
+--------------------------------------
+sudo losetup /dev/loop0 boot
+sudo losetup /dev/loop1 boot -o 1M
+--> sudo losetup -P /dev/loop0 boot
+--------------------------------------
+sudo mount /dev/loop1 m
+
+# sudo losetup -d /dev/loop0
+
+sudo grub-install --target=i386-pc --root-directory=/home/hongkunyoo.linux/LFN/m --no-floppy --modules="normal part_msdos ext2 multiboot" /dev/loop0
+
+
+
+qemu-system-x86_64 -kernel bzImage -initrd initframfs.cpio.gz -append 'rw console=ttyS0,115200 earlyprintk=ttyS0 loglevel=8' -nographic 
+
+qemu-system-x86_64 -kernel bzImage -initrd initframfs.cpio.gz -append 'root=/dev/vda1 rw console=ttyS0,115200 earlyprintk=ttyS0 loglevel=8' -nographic -drive file=disk.img,if=virtio
+
+
+$ qemu-system-x86_64 -kernel vmlinuz-linux -initrd initramfs.img -m 1G -hda kernel-hd -append "root=/dev/sda"
+
+---------------------------------------------------------------
+
+
+https://z49x2vmq.github.io/2020/12/24/linux-tiny-qemu/
+
+
