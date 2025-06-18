@@ -19,7 +19,7 @@ HTML="""\
 <body>
   <main>
 
-    <h1>Personal Wiki page</h1>
+    <h1>Personal wiki</h1>
     <ul>
       {0}
     </ul>
