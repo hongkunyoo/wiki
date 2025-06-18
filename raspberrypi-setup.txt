@@ -1,0 +1,122 @@
+# k3s
+
+https://docs.tigera.io/calico/latest/getting-started/kubernetes/k3s/quickstart
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --flannel-backend none --disable traefik servicelb --disable-network-policy --disable-helm-controller" K3S_TOKEN=12345 sh -s -
+curl -sfL https://get.k3s.io | K3S_URL=https://10.0.1.10:6443 sh -s - agent --token 12345
+
+---------------------------
+
+# calicoctl with single binary
+
+DATASTORE_TYPE=kubernetes KUBECONFIG=~/.kube/config calicoctl get nodes
+
+---------------------------
+
+
+orig: 221.153.251.47
+new : 220.78.33.152
+
+sudo vi /etc/dhcpcd.conf
+
+interface wlan0
+static ip_address=192.168.1.31/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1
+
+---
+flush dhcpcd.conf changes
+sudo ip addr flush dev eth0
+
+
+# IP forward
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# if router does not work, check whether each nodes default gateway(router) is setup correctly.
+
+------------------------------------------------------------------------------------------------
+
+# locale setup
+
+sudo su -
+echo "LC_ALL=en_US.UTF-8" >> /etc/environment
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+locale-gen en_US.UTF-8
+
+------------------------------------------------------------------------------------------------
+
+# WIFI setup
+wpa_passphrase your-ESSID your-passphrase >> /etc/wpa_supplicant/wpa_supplicant.conf
+----
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev   # 꼭 넣기
+update_config=1                                           # 꼭 넣기
+p2p_disabled=1
+network={
+	ssid="skyiptime6F45"
+	psk="-----"
+}
+----
+
+sudo wpa_supplicant -B -c /etc/wpa_supplicant/wpa_supplicant.conf -i wlan0
+sudo wpa_cli -i wlan0 reconfigure
+
+rfkill list all
+rfkill unblock wifi
+
+
+##################################################################################################
+After bookwarm, network setup has changed to NetworkManager (both wifi and static ethernet)
+
+=> https://linux.fernandocejas.com/docs/how-to/set-static-ip-address
+
+------------------------------------------------------------------------------------------------
+
+# nft commands
+
+sudo nft list ruleset > /etc/nftables.conf
+sudo nft list ruleset
+sudo nft -a list ruleset
+sudo nft delete rule nat postrouting handle 3
+
+sudo nft add table nat
+sudo nft 'add chain nat postrouting { type nat hook postrouting priority 100 ;}'
+sudo nft add rule nat postrouting ip saddr 10.0.1.0/24 oif wlan0 masquerade
+sudo nft add rule nat postrouting ip saddr 10.0.2.0/24 oif wlan0 masquerade
+
+
+
+
+[r01]
+sudo ip route add 10.0.1.0/24 via 10.0.0.2 dev eth0
+sudo ip route add 10.0.2.0/24 via 10.0.0.2 dev eth0
+sudo ip route add 10.0.3.0/24 via 10.0.0.3 dev eth0
+
+
+sudo ip route del 10.0.1.0/24
+sudo ip route del 10.0.2.0/24
+sudo ip route del 10.0.3.0/24
+
+# Basic Static ECMP Configuration (Equal cost multipath routing)
+sudo ip route add 10.10.10.0/24 \
+    nexthop via 192.168.1.1 dev eth0 weight 1 \
+    nexthop via 192.168.2.1 dev eth1 weight 1
+
+
+------------------------------------------------------------------------------------------------
+[vlan setting]
+
+- netgear setting: https://kb.netgear.com/30919/How-to-configure-VLANs-on-a-NETGEAR-Web-Managed-Plus-Switch-with-shared-access-to-the-internet
+- pi vlan tagging: https://engineerworkshop.com/blog/raspberry-pi-vlan-how-to-connect-your-rpi-to-multiple-networks/
+
+------------------------------------------------------------------------------------------------
+
+[Performance]
+
+sysbench
+stress-ng
+speed meter
+dd
+
+[ip route explain Youtube]
+https://www.youtube.com/watch?v=zstdOS_6ajY&ab_channel=LinuxCloudHacks
