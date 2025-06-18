@@ -11,7 +11,7 @@ HTML="""\
   <title>Personal wiki</title>
   <link
   rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css"
+  href="pico.classless.min.css"
 >
   <meta name="description" content="">
 </head>
@@ -30,8 +30,8 @@ HTML="""\
 """
 
 arr = []
-for f in os.listdir():
-    if f == ".github" or f == ".git" or f == "index.html" or f == "build-index.py":
+for f in sorted(os.listdir()):
+    if f == ".github" or f == ".git" or f == "index.html" or f == "build-index.py" or f == "pico.classless.min.css":
         continue
     arr.append(f"<li><a target='_blank' href='{f}'>{f}</li>")
 
