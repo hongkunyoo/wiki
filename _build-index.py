@@ -8,7 +8,7 @@ HTML="""\
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personal wiki</title>
+  <title>coffeewhale wiki</title>
   <link
   rel="stylesheet"
   href="_pico.classless.min.css"
@@ -42,7 +42,7 @@ def gen_li(curdir, excepts):
         if os.path.isdir(os.path.join(curdir, f)):
             ff = gen_li(os.path.join(curdir, f), excepts)
             d = os.path.join(curdir, f)
-            arr.append(f"<li><a href='{d}' target='_blank'>{f}/</a> {ff}</li>")
+            arr.append(f"<li>{f}/ {ff}</li>")
         else:
             arr.append(f"<li><a target='_blank' href='{curdir}/{f}'>{f}</a></li>")
     return "<ul>" + ("\n".join(arr)) + "</ul>"
