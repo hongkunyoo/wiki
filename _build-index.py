@@ -27,7 +27,7 @@ HTML="""\
   <main>
 
     <h1>Personal wiki</h1>
-    <hr/>
+    <hr style="margin-top: 1em; margin-bottom: 1em;"/>
       {0}
   </main>
 
