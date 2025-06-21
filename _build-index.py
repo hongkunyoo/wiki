@@ -27,6 +27,7 @@ HTML="""\
   <main>
 
     <h1>Personal wiki</h1>
+    <hr/>
       {0}
   </main>
 
