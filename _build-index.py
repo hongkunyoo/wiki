@@ -80,7 +80,7 @@ def gen_li(curdir, excepts):
             d = os.path.join(curdir, f)
             arr.append(f"<li>{f}/ {ff}</li>")
         else:
-            if f.endswith("txt"):
+            if f.endswith("txt") or f.endswith("cfg"):
                 with open(f"{curdir}/{f}.html", "w") as txt:
                     with open(f"{curdir}/{f}", "r") as content:
                         txtContent = content.read()
