@@ -62,9 +62,7 @@ TXT="""\
 
     <h1>{0}</h1>
     <hr style="margin-top: 1em; margin-bottom: 1em;"/>
-    <pre style="padding: 10px;">
-{1}
-    </pre>
+    <pre style="padding: 10px;">{1}</pre>
   </main>
 
 </body>
