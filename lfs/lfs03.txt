@@ -1,0 +1,102 @@
+########################################################################
+# Makefile in Arch Linux server
+########################################################################
+start:
+        qemu-system-x86_64  -m 2048  -bios /usr/share/ovmf/x64/OVMF.4m.fd   -drive file=boot,format=raw -nographic
+
+usb:
+        sudo qemu-system-x86_64  -m 2048  -bios /usr/share/ovmf/x64/OVMF.4m.fd   -drive file=/dev/sda,format=raw -nographic
+
+usbq:
+        qemu-system-x86_64  -m 2048  -bios /usr/share/ovmf/x64/OVMF.4m.fd -usb -device usb-storage,drive=usb_disk,bus=usb-bus.0 -drive file=boot,if=none,id=usb_disk -nographic
+
+usbq2:
+        qemu-system-x86_64 -m 2048  -bios /usr/share/ovmf/x64/OVMF.4m.fd \
+          -drive file=boot,format=raw,if=none,id=usbstick \
+    -device usb-ehci,id=ehci \
+                -device usb-storage,drive=usbstick -vnc 0.0.0.0:0
+
+kill:
+        ps uax | grep qemu | head -1 | awk '{print $$2}' | xargs -I{} kill {}
+
+setup:
+        sudo losetup -P -f boot
+        sudo mount /dev/loop0p2 /mnt/lfs
+
+teardown:
+        sudo umount /mnt/lfs
+        sudo losetup -d /dev/loop0
+
+setupusb:
+        sync
+        sudo mount /dev/sda2 /home/bee/m
+
+teardownusb:
+        sync
+        sudo umount /home/bee/m
+
+setupall: setup setupusb
+        lsblk
+
+teardownall: teardown teardownusb
+        lsblk
+
+
+########################################################################
+# Making EFI disk image
+########################################################################
+dd if=/dev/zero of=merged.img bs=1M count=2048
+
+parted merged.img --script \
+  mklabel gpt \
+  mkpart ESP fat32 1MiB 101MiB \
+  set 1 esp on \
+  mkpart root ext4 101MiB 100%
+
+
+LOOPDEV=$(losetup --show --partscan -f merged.img)
+
+# ${LOOPDEV}p1 → EFI
+# ${LOOPDEV}p2 → root
+
+
+mkfs.vfat -F32 ${LOOPDEV}p1
+mkfs.ext4 ${LOOPDEV}p2
+
+
+mkdir /mnt/root
+mount ${LOOPDEV}p2 /mnt/root
+
+
+mkdir -p /mnt/root/boot/efi
+mount ${LOOPDEV}p1 /mnt/root/boot/efi
+
+# Need to install:
+#  - efivar
+#  - efibootmgr
+#  - grub
+mountpoint /sys/firmware/efi/efivars || mount -v -t efivarfs efivarfs /sys/firmware/efi/efivars
+
+
+grub-install --target=x86_64-efi \
+             --efi-directory=/mnt/root/boot/efi \
+             --boot-directory=/mnt/root/boot \
+             --removable --no-nvram \
+             --root-directory=/mnt/root \
+             --bootloader-id=GRUB
+
+grub-install --target=x86_64-efi \
+      --efi-directory=/boot/efi \
+      --bootloader-id=LFS
+
+
+grub-install --target=i386-pc \
+             --boot-directory=/mnt/root/boot \
+             ${LOOPDEV}
+
+
+qemu-system-x86_64  -m 2048  -bios /usr/share/ovmf/OVMF.fd   -drive file=merged.img,format=raw -nographic
+
+
+# check which boot
+[ -d /sys/firmware/efi ] && echo "UEFI" || echo "BIOS"
