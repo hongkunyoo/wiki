@@ -1,0 +1,29 @@
+make defconfig
+make prepare
+
+python3 scripts/clang-tools/gen_compile_commands.py
+
+sudo apt-get install -y clangd
+# install neoclide/coc.nvim
+
+~/.vim/coc-settings.json
+
+```
+{
+  "clangd.path": "clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--header-insertion=never",
+    "--cross-file-rename=true",
+    "--clang-tidy=false",
+    "--compile-commands-dir=/home/pi/linux-6.6.y/compile_commands.json"
+  ],
+  "diagnostic.displayByAle": false,
+  "suggest.noselect": true
+}
+```
+
+# In vim
+
+:CocInfo
+:CocList services
