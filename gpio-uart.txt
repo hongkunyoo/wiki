@@ -13,6 +13,8 @@ gpio -g read 16
 
 # LED 긴다리(+) / 짧은다리(-)
 
+# GPIO button: pull-up, pull-down, floating: https://cookbook.tistory.com/21
+
 
 pi@r03:~ $ gpio readall
  +-----+-----+---------+------+---+---Pi 3B+-+---+------+---------+-----+-----+
