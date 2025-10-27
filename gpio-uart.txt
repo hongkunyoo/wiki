@@ -8,6 +8,10 @@ sudo grep gpio /proc/iomem
 gpio -g mode 12 out
 gpio -g mode 16 out
 
+gpio -g write 16 0
+gpio -g read 16
+
+# LED 긴다리(+) / 짧은다리(-)
 
 
 pi@r03:~ $ gpio readall
