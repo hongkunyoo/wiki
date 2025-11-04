@@ -1,0 +1,34 @@
+# FROM /dev/sda TO /dev/nvme0n1
+
+# format fs
+sudo mkfs.vfat -F 32 -n BOOTFS /dev/nvme0n1p1
+sudo mkfs.ext4 -L rootfs       /dev/nvme0n1p2
+
+# RootFS
+sudo mkdir -p /mnt/src /mnt/dst
+sudo mount /dev/sda2      /mnt/src
+sudo mount /dev/nvme0n1p2 /mnt/dst
+
+# BootFS
+sudo mkdir -p /mnt/src/boot/firmware /mnt/dst/boot/firmware
+sudo mount /dev/sda1      /mnt/src/boot/firmware
+sudo mount /dev/nvme0n1p1 /mnt/dst/boot/firmware
+
+# Copy from src to dst
+sudo rsync -aAXHv \
+  --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
+  /mnt/src/ /mnt/dst/
+
+
+sudo blkid /dev/nvme0n1p1 /dev/nvme0n1p2
+
+sudo vim /mnt/dst/etc/fstab
+PARTUUID=<PARTUUID2>  /      ext4   defaults,noatime  0 1
+PARTUUID=<PARTUUID1>  /boot  vfat   defaults          0 2
+
+
+sudo vim /mnt/dst/boot/firmware/cmdline.txt
+root=PARTUUID=<PARTUUID2>
+
+sudo raspi-config
+Open Advanced Options -> Boot Order -> NVME
