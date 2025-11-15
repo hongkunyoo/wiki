@@ -69,9 +69,45 @@ TXT="""\
 </html>
 """
 
+BOOKMARK="""\
+<!doctype html>
+<html lang="" data-theme="light">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>coffeewhale bookmark</title>
+  <link
+  rel="stylesheet"
+  href="_pico.classless.min.css"
+>
+  <style>
+    :root {{
+        --pico-typography-spacing-vertical: 0rem;
+
+    }}
+
+  </style>
+  <meta name="description" content="">
+</head>
+
+<body>
+  <main>
+
+    <h1>Bookmarks</h1>
+    <hr style="margin-top: 1em; margin-bottom: 1em;"/>
+      {0}
+  </main>
+
+</body>
+</html>
+"""
+
+
 
 def gen_li(curdir, excepts):
     arr = []
+    #arr.append(f"<li><a target='_blank' href='bookmark.html'>Bookmarks</a></li>")
     for f in sorted(os.listdir(curdir)):
         if f in excepts:
             continue
@@ -92,8 +128,30 @@ def gen_li(curdir, excepts):
 
 
 
-arr = gen_li(".", [".github", ".git", "index.html", "_build-index.py", "_pico.classless.min.css", ".gitignore"])
+arr = gen_li(".", [".github", ".git", "index.html", "_build-index.py", "_pico.classless.min.css", ".gitignore", "bookmark.txt"])
 
 output = HTML.format(arr)
 with open("index.html", "w") as f:
+    print(output, file=f)
+
+bookmarks = []
+with open("bookmark.txt") as f:
+    for line in f.readlines():
+        u, t = line.split("`")
+        if u.startswith(" "):
+            c = int((u.count(" ") - 1) /2)
+            t = t.strip()
+            u = u.strip()
+            tmp = "{0}"
+            for i in range(c):
+                tmp = tmp.format("<ul>{0}</ul>")
+            tmp = tmp.format(f"<li><a target='_blank' href='{u}'>{t}</a></li>")
+            bookmarks.append(tmp)
+        else:
+            t = t.strip()
+            u = u.strip()
+            bookmarks.append(f"<li><a target='_blank' href='{u}'>{t}</a></li>")
+
+output = BOOKMARK.format("<ul>" + ("\n".join(bookmarks)) + "</ul>")
+with open("bookmark.html", "w") as f:
     print(output, file=f)

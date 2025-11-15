@@ -1,0 +1,6 @@
+https://www.youtube.com/watch?v=zstdOS_6ajY ` Linux IP Routing Basics: Routes, Tables, and Policy-Based Routing Explained
+https://www.youtube.com/@nirlichtman/videos ` Nir Lichtman Channel: Kernel, OS, Assembly
+  https://www.youtube.com/watch?v=u2Juz5sQyYQ ` Making Smallest Possible Linux Distro
+https://www.youtube.com/@Maple-Circuit/videos ` Maple Circuit Channel: Linux From Nothing
+  https://www.youtube.com/watch?v=fDaSSArmRjk ` LFN Beta | Make your own distro from Nothing!
+https://lwn.net/Kernel/LDD3 ` Linux Device Drivers: online PDF
