@@ -1,4 +1,5 @@
 import os
+import json
 
 
 HTML="""\
@@ -21,6 +22,7 @@ HTML="""\
 
   </style>
   <meta name="description" content="">
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.1.0"></script>
 </head>
 
 <body>
@@ -28,8 +30,62 @@ HTML="""\
 
     <h1>Personal wiki</h1>
     <hr style="margin-top: 1em; margin-bottom: 1em;"/>
+    <input type="text" placeholder="Search" />
+    <ul id="searchResult" style="top: 30px; left: 0; width: 100%; margin: 2px; padding: 2px;"></ul>
+    <hr style="margin-top: 1em; margin-bottom: 1em;"/>
       {0}
   </main>
+
+    <script>
+  (async function() {{
+    const url = "./search.json";
+    try {{
+      const response = await fetch(url);
+      if (!response.ok) {{
+        throw new Error(`Response status: ${{response.status}}`);
+      }}
+
+      const result = await response.json();
+
+      const fuseOptions = {{
+        minMatchCharLength: 1,
+        threshold: 0.4,
+        distance: 10000,
+        //includeMatches: true,
+        keys: [
+          "title",
+          "tags"
+        ]
+      }};
+
+      const fuse = new Fuse(result, fuseOptions);
+      const input = document.querySelector("input");
+      const searchResult = document.querySelector("#searchResult");
+
+      input.addEventListener("keypress", logKey);
+
+      function logKey(e) {{
+        if (event.key === 'Enter') {{
+          const l = e.target.value;
+          //console.log(l);
+          searchResult.innerHTML = "";
+
+          fuse.search(l).forEach(function(item){{
+            const li = document.createElement("li");
+            const _item = item.item;
+            console.log(item);
+            li.innerHTML=`<a target='_blank' href='${{_item.url}}'>${{_item.title}}</a>`;
+            searchResult.appendChild(li);
+          }});
+        }}
+      }}
+
+    }} catch (error) {{
+      console.error(error.message);
+    }}
+  }})();
+
+  </script>
 
 </body>
 </html>
@@ -69,6 +125,7 @@ TXT="""\
 </html>
 """
 
+search = []
 
 def gen_li(curdir, excepts):
     arr = []
@@ -86,8 +143,18 @@ def gen_li(curdir, excepts):
                         txtContent = content.read()
                         print(TXT.format(f, txtContent), file=txt)
                 arr.append(f"<li><a target='_blank' href='{curdir}/{f}.html'>{f}</a></li>")
+                search.append({
+                    "title": f,
+                    "tags": txtContent,
+                    "url": f"{curdir}/{f}.html"
+                })
             else:
                 arr.append(f"<li><a target='_blank' href='{curdir}/{f}'>{f}</a></li>")
+                search.append({
+                    "title": f,
+                    "tags": "",
+                    "url": f"{curdir}/{f}"
+                })
     return "<ul>" + ("\n".join(arr)) + "</ul>"
 
 
@@ -97,3 +164,6 @@ arr = gen_li(".", [".github", ".git", "index.html", "_build-index.py", "_pico.cl
 output = HTML.format(arr)
 with open("index.html", "w") as f:
     print(output, file=f)
+
+with open("search.json", "w") as json_file:
+    json.dump(search, json_file, indent=2)
