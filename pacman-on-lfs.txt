@@ -1,0 +1,46 @@
+# Using pacman on lfs
+
+1. Install fakeroot
+
+- Browse: https://deb.debian.org/debian/pool/main/f/fakeroot
+- Choose a tar.gz file
+- wget that file
+
+```
+tar -xvf fakeroot_1.36.orig.tar.gz
+cd fakeroot-1.36
+
+# 2. Configure (Ensure it installs to /usr)
+./configure --prefix=/usr --libdir=/usr/lib/libfakeroot --disable-static --with-ipc=tcp
+
+# 3. Build
+make
+
+# 4. Install (As Root)
+sudo make install
+```
+
+
+2. Install `yay`
+
+- `yay` is a static binary. Just get from git repository
+
+
+
+3. How to install firefox
+
+```
+yay -G firefox  # Downloads PKGBUILD to current directory
+cd firefox
+makepkg -si
+```
+
+4. If the package complains about glibc or other packages version does not match, remove the package from the `depends` command if and only if you already have that package.
+
+```
+cd firefox
+vi PKGBUILD 
+
+
+depends=('glibc') --> depends=()
+```
