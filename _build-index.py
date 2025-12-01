@@ -98,7 +98,7 @@ TXT="""\
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>coffeewhale wiki</title>
+  <title>{0}</title>
   <link
   rel="stylesheet"
   href="/wiki/_pico.classless.min.css"
@@ -116,9 +116,9 @@ TXT="""\
 <body>
   <main>
 
-    <h1>{0}</h1>
+    <h1>{1}</h1>
     <hr style="margin-top: 1em; margin-bottom: 1em;"/>
-    <pre style="padding: 10px;">{1}</pre>
+    <pre style="padding: 10px;">{2}</pre>
   </main>
 
 </body>
@@ -141,7 +141,7 @@ def gen_li(curdir, excepts):
                 with open(f"{curdir}/{f}.html", "w") as txt:
                     with open(f"{curdir}/{f}", "r") as content:
                         txtContent = content.read()
-                        print(TXT.format(f, txtContent), file=txt)
+                        print(TXT.format(f, f, txtContent), file=txt)
                 arr.append(f"<li><a target='_blank' href='{curdir}/{f}.html'>{f}</a></li>")
                 search.append({
                     "title": f,
