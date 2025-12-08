@@ -1,0 +1,75 @@
+# write ISO to a USB stick
+sudo dd bs=4M if=path/to/archlinux-version-x86_64.iso of=/dev/disk/by-id/usb-My_flash_drive conv=fsync oflag=direct status=progress
+
+# connect wifi
+iwctl
+[iwd]# device list
+[iwd]# station wlan0 scan
+[iwd]# station wlan0 get-networks
+[iwd]# station wlan0 connect nth201_5G
+
+
+# Make partitions
+fdisk -l
+
+# ESP: 100Mi / root: 300Gi
+parted --script --align optimal /dev/nvme0n1 \
+  mklabel gpt \
+  mkpart "ESP" fat32 1MiB 101MiB \
+  set 1 esp on \
+  mkpart "root" ext4 101MiB 307301MiB
+
+
+# Format paritions
+mkfs.ext4 /dev/nvme0n1p2
+mkfs.fat -F 32 /dev/nvme0n1p1
+
+# mount root & boot
+mount /dev/nvme0n1p2 /mnt
+mount /dev/nvme0n1p1 /mnt/boot
+
+# change mirror server
+vim /etc/pacman.d/mirrorlist
+
+
+# install base
+pacstrap -K /mnt base linux linux-firmware
+
+
+genfstab -U /mnt >> /mnt/etc/fstab
+
+arch-chroot /mnt
+pacman -Sy
+pacman -S wget curl vim tmux net-tools dnsutils wpa_supplicant openssh
+
+ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+
+hwclock --systohc
+locale-gen
+
+/etc/locale.conf
+LANG=en_US.UTF-8
+
+
+/etc/hostname
+myhostname
+
+mkinitcpio -P
+
+passwd
+
+# configure bootloader
+pacman -S grub efibootmgr
+
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# run this command just for check
+efibootmgr
+
+
+reboot
+
+
+useradd -m -s /bin/bash bee
+usermod -a -G wheel bee
