@@ -12,6 +12,11 @@ Gateway=192.168.1.1
 DNS=1.1.1.1
 DNS=8.8.8.8
 
+# If you want custom routing information
+# [Route]
+# Destination=172.16.0.0/16
+# Gateway=192.168.1.254
+
 
 sudo systemctl restart systemd-networkd
 
