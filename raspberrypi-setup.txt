@@ -32,7 +32,8 @@ sudo ip addr flush dev eth0
 # IP forward
 sudo sysctl -w net.ipv4.ip_forward=1
 
-# if router does not work, check whether each nodes default gateway(router) is setup correctly.
+# if a router does not work, check whether each nodes default gateway(router) is setup correctly.
+# if a router has a (pseudo) public subnet, it must masquerade the internal subnet. Otherwise, the internal IP would not reach to other public subnets.
 
 ------------------------------------------------------------------------------------------------
 
@@ -43,6 +44,8 @@ echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 locale-gen en_US.UTF-8
+
+sudo dpkg-reconfigure locales
 
 ------------------------------------------------------------------------------------------------
 
