@@ -1,0 +1,50 @@
+vim /etc/systemd/network/10-bond0.netdev
+
+[NetDev]
+Name=bond0
+Kind=bond
+
+[Bond]
+# Mode 2
+Mode=balance-xor
+TransmitHashPolicy=layer3+4
+MIIMonitorSec=100s
+
+
+################################################
+
+vim /etc/systemd/network/10-bond0-slaves.network
+
+[Match]
+Name=eth0 eth1
+
+[Network]
+Bond=bond0
+
+################################################
+
+/etc/systemd/network/20-bond0.network
+
+[Match]
+Name=bond0
+
+[Network]
+DHCP=yes
+# Or use static IP below:
+# Address=192.168.1.50/24
+# Gateway=192.168.1.1
+
+################################################
+
+sudo systemctl restart systemd-networkd
+cat /proc/net/bonding/bond0
+
+
+LAG1
+- pi1 port1: eth0
+- pi1 port2: eth1
+
+
+LAG2
+- pi2 port1: eth0
+- pi2 port2: eth1
