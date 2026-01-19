@@ -1,6 +1,6 @@
-sudo systemctl disable --now netctl
-sudo systemctl disable --now NetworkManager
-sudo systemctl enable --now systemd-networkd
+sudo systemctl disable netctl
+sudo systemctl disable NetworkManager
+sudo systemctl enable systemd-networkd
 
 # /etc/systemd/network/20-wireless.network
 [Match]
