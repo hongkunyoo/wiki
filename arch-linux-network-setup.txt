@@ -23,7 +23,7 @@ sudo systemctl restart systemd-networkd
 -----
 
 sudo wpa_passphrase "Your_SSID" "Your_Password" | sudo tee /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
-sudo systemctl enable --now wpa_supplicant@wlan0.service
+sudo systemctl enable wpa_supplicant@wlan0.service
 
 -----
 
